@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Role } from "src/common/enums/role";
 
 @Schema({ timestamps: true })
 export class User {
@@ -12,7 +13,7 @@ export class User {
   password: string;
 
   @Prop({ default: ['user'] })
-  roles: string[];
+  roles: Role[];
 
   @Prop({ select: false })
   refreshToken?: string;

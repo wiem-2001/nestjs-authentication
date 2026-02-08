@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Post, Req, UseGuards, Res, UnauthorizedException } from '@nestjs/common';
-import { JwtGuard } from './guards/jwt-guard/jwt-guard';
-import { RefreshGuard } from './guards/refresh-guard/refresh-guard';
-import { CreateUserDto } from 'src/users/dtos/create-user-dto/create-user-dto';
-import { LoginDto } from './dtos/login/login';
+import { JwtGuard } from './guards/jwt-guard';
+import { RefreshGuard } from './guards/refresh-guard';
+import { CreateUserDto } from 'src/users/dtos/create-user-dto';
+import { LoginDto } from './dtos/login';
 import { AuthService } from './auth.service';
-import { ForgotPasswordDto } from './dtos/forgot-password/forgot-password';
-import { ResetPasswordDto } from './dtos/reset-password/reset-password';
-import { VerifyResetLinkDto } from './dtos/verify-reset-link/verify-reset-link.dto';
+import { ForgotPasswordDto } from './dtos/forgot-password';
+import { ResetPasswordDto } from './dtos/reset-password';
+import { VerifyResetLinkDto } from './dtos/verify-reset-link.dto';
 import { EmailService } from 'src/email/email.service';
 
 @Controller('auth')
