@@ -26,4 +26,11 @@ import { CreateUserDto } from './dtos/create-user-dto/create-user-dto';
     return this.userModel.findByIdAndUpdate(userId, { refreshToken }, { new: true });
   }
 
+  async findOneByTokenAndExpirationDate(resetPasswordToken: string) {
+    return this.userModel.findOne({
+      resetPasswordToken,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+  }
+
 }

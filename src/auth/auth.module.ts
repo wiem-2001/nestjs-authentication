@@ -8,10 +8,12 @@ import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtGuard } from './guards/jwt-guard/jwt-guard';
 import { RefreshGuard } from './guards/refresh-guard/refresh-guard';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
     imports: [
     UsersModule,
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret:'supersecret',

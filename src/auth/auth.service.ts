@@ -4,7 +4,7 @@ import { CreateUserDto } from 'src/users/dtos/create-user-dto/create-user-dto';
 import { UsersService } from 'src/users/users.service';
 import { LoginDto } from './dtos/login/login';
 import * as bcrypt from 'bcrypt';
-
+import * as crypto from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -40,5 +40,37 @@ export class AuthService {
     const access_token = this.jwtService.sign(payload);
     return { access_token };
   }
+
+  async generateResetToken(email: string) {
+  const user = await this.usersService.findByEmail(email, true);
+  if (!user) throw new UnauthorizedException('User not found'); 
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordExpires = new Date(Date.now() + 3600 * 1000); // 1 hour
+  await user.save();
+
+  return resetToken;
+}
+
+async validateResetToken(resetToken: string) {
+  const user = await this.usersService.findOneByTokenAndExpirationDate(resetToken);
+  if (!user) throw new UnauthorizedException('Invalid or expired token');
+  return user;
+}
+
+async resetPassword(token: string, newPassword: string) {
+  const user = await this.usersService.findOneByTokenAndExpirationDate(token);
+    
+  if (!user) throw new Error('Invalid or expired token');
+
+  user.password = await bcrypt.hash(newPassword, 12);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  return true;
+}
+
 }
 
