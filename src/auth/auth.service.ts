@@ -35,10 +35,34 @@ export class AuthService {
     return { access_token, refresh_token };
   }
 
-  async refresh(userId: string) {
-    const payload = { sub: userId };
-    const access_token = this.jwtService.sign(payload);
-    return { access_token };
+  async refresh(userId: string, currentRefreshToken: string) {
+    try {
+      // Get user with refresh token from database
+      const user = await this.usersService.getUserWithRefreshToken(userId);
+      if (!user || !user.refreshToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Verify the provided token matches the stored hash
+      const isRefreshTokenValid = await bcrypt.compare(currentRefreshToken, user.refreshToken);
+      if (!isRefreshTokenValid) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Generate new tokens (token rotation)
+      const payload = { sub: user._id, email: user.email, roles: user.roles };
+      const access_token = this.jwtService.sign(payload, { expiresIn: '1h' });
+      const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+      // Save new refresh token hash (rotate the token)
+      const hashedRefreshToken = await bcrypt.hash(refresh_token, 10);
+      await this.usersService.updateRefreshToken(userId, hashedRefreshToken);
+
+      return { access_token, refresh_token };
+    } catch (error) {
+      if (error.statusCode === 401) throw error;
+      throw new UnauthorizedException('Token refresh failed');
+    }
   }
 
   async generateResetToken(email: string) {

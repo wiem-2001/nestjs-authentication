@@ -4,6 +4,7 @@ import { RefreshGuard } from './guards/refresh-guard';
 import { CreateUserDto } from 'src/users/dtos/create-user-dto';
 import { LoginDto } from './dtos/login';
 import { AuthService } from './auth.service';
+import { UsersService } from 'src/users/users.service';
 import { ForgotPasswordDto } from './dtos/forgot-password';
 import { ResetPasswordDto } from './dtos/reset-password';
 import { VerifyResetLinkDto } from './dtos/verify-reset-link.dto';
@@ -11,7 +12,11 @@ import { EmailService } from 'src/email/email.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService, private emailService: EmailService) {}
+  constructor(
+    private authService: AuthService,
+    private usersService: UsersService,
+    private emailService: EmailService
+  ) {}
 
         @Post('register')
 async register(@Body() userData: CreateUserDto) {
@@ -43,7 +48,12 @@ async login(@Body() body: LoginDto, @Res() res: any) {
 @UseGuards(RefreshGuard)
 @Post('refresh')
 async refresh(@Req() req: any, @Res() res: any) {
-  const tokens = await this.authService.refresh(req.user.userId);
+  const currentRefreshToken = req.cookies?.refreshToken;
+  if (!currentRefreshToken) {
+    throw new UnauthorizedException('No refresh token provided');
+  }
+
+  const tokens = await this.authService.refresh(req.user.userId, currentRefreshToken);
   
   // Set new accessToken cookie
   res.cookie('accessToken', tokens.access_token, {
@@ -52,8 +62,16 @@ async refresh(@Req() req: any, @Res() res: any) {
     sameSite: 'strict',
     maxAge: 3600000, // 1 hour
   });
+
+  // Set new refreshToken cookie (token rotation)
+  res.cookie('refreshToken', tokens.refresh_token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 604800000, // 7 days
+  });
   
-  return res.json({ message: 'Token refreshed' });
+  return res.json({ message: 'Token refreshed and rotated' });
 }
 
 @UseGuards(JwtGuard)
@@ -112,7 +130,11 @@ async resetPassword(@Body() dto: ResetPasswordDto, @Req() req: any, @Res() res: 
 
 @UseGuards(JwtGuard)
 @Post('logout')
-async logout(@Res() res: any) {
+async logout(@Req() req: any, @Res() res: any) {
+  // Clear refresh token from database (invalidate all tokens)
+  await this.usersService.clearRefreshToken(req.user.userId);
+  
+  // Clear cookies
   res.clearCookie('accessToken');
   res.clearCookie('refreshToken');
   res.clearCookie('resetSession');
